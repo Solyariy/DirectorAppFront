@@ -1,0 +1,42 @@
+# Rendered by the nginx image's envsubst step at container start
+# (only ${API_UPSTREAM} and ${API_HOST_HEADER} are substituted).
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Auth is Django's token auth: the SPA logs in at /api/auth/token/ and sends
+    # `Authorization: Token <key>` on every API call, which nginx passes through.
+
+    # Container health check.
+    location = /healthz {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    # Same-origin API: the browser never talks to Django directly, so no CORS.
+    location /api/ {
+        proxy_pass ${API_UPSTREAM};
+        # Django (DEBUG, empty ALLOWED_HOSTS) only accepts localhost-style hosts.
+        proxy_set_header Host ${API_HOST_HEADER};
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 30s;
+    }
+
+    # Hashed build assets: cache forever.
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    # SPA routes fall back to index.html.
+    location / {
+        add_header Cache-Control "no-cache";
+        try_files $uri $uri/ /index.html;
+    }
+}

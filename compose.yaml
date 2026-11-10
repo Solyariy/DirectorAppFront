@@ -1,0 +1,16 @@
+services:
+  admin:
+    build: .
+    image: director-admin
+    restart: unless-stopped
+    environment:
+      API_UPSTREAM: ${API_UPSTREAM:-http://host.docker.internal:8000}
+      API_HOST_HEADER: ${API_HOST_HEADER:-localhost}
+    ports:
+      # Only reachable from this machine; change to "${ADMIN_PORT:-8080}:80" to expose on the LAN.
+      - "127.0.0.1:${ADMIN_PORT:-8080}:80"
+    # Linux (no Docker Desktop): uncomment, and run Django on 0.0.0.0:8000.
+    # Don't enable it on Docker Desktop: it replaces the built-in alias that
+    # reaches services bound to the host's 127.0.0.1.
+    # extra_hosts:
+    #   - "host.docker.internal:host-gateway"
